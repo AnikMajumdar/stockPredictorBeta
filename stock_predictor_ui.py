@@ -18,16 +18,23 @@ def predict_prices(df):
     # Use previous day's close to predict today's close
     closes = df['Close'].values
     if len(closes) < 2:
-        return closes
+        return closes, []
     X = closes[:-1].reshape(-1, 1)
     y = closes[1:]
     model = LinearRegression()
     model.fit(X, y)
     # Predict for all except the first day
     predicted = model.predict(closes[:-1].reshape(-1, 1))
-    # Pad the first value to align with actuals
     predicted = np.insert(predicted, 0, closes[0])
-    return predicted
+    # Forecast next 7 days
+    future_preds = []
+    last_close = closes[-1]
+    for _ in range(7):
+        # Ensure last_close is a scalar and input is 2D
+        next_pred = model.predict(np.array(last_close).reshape(1, 1))[0]
+        future_preds.append(next_pred)
+        last_close = next_pred
+    return predicted, future_preds
 
 def calculate_rmse(actual, predicted):
     return np.sqrt(mean_squared_error(actual, predicted))
@@ -66,18 +73,9 @@ class StockPredictorUI:
         self.ticker_entry = ttk.Entry(root)
         self.ticker_entry.pack(pady=5)
 
-        # Display option
-        self.display_var = tk.StringVar(value="Graph")
-        self.graph_radio = ttk.Radiobutton(root, text="Graph", variable=self.display_var, value="Graph")
-        self.table_radio = ttk.Radiobutton(root, text="Table", variable=self.display_var, value="Table")
-        self.graph_radio.pack()
-        self.table_radio.pack()
-
-        # Submit button
-        self.submit_btn = ttk.Button(root, text="Show", command=self.show_data)
+        # Only graph will be shown; no user selection
+        self.submit_btn = ttk.Button(root, text="Show Graph", command=self.show_data)
         self.submit_btn.pack(pady=10)
-
-        # Output frame
         self.output_frame = ttk.Frame(root)
         self.output_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -96,59 +94,31 @@ class StockPredictorUI:
             return
         for widget in self.output_frame.winfo_children():
             widget.destroy()
-        predicted = predict_prices(df)
+        predicted, future_preds = predict_prices(df)
         actual = df['Close'].values
+        # Ensure predicted and actual arrays are the same length
+        min_len = min(len(actual), len(predicted))
+        actual = actual[:min_len]
+        predicted = predicted[:min_len]
         rmse = calculate_rmse(actual, predicted)
-        if self.display_var.get() == "Graph":
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.plot(df.index, actual, label='Actual Price', color='blue')
-            ax.plot(df.index, predicted, label='Predicted Price', color='green')
-            ax.set_title(f"{ticker} Actual vs Predicted Prices\nRMSE: {rmse:.2f}")
-            ax.set_xlabel('Date')
-            ax.set_ylabel('Price')
-            ax.legend()
-            # Add RMSE table below the graph
-            cell_text = [[f'{rmse:.2f}']]
-            row_labels = ['RMSE']
-            table = ax.table(cellText=cell_text, rowLabels=row_labels, colLabels=['Error'], loc='bottom', cellLoc='center')
-            table.scale(1, 1.5)
-            plt.subplots_adjust(bottom=0.2)
-            canvas = FigureCanvasTkAgg(fig, master=self.output_frame)
-            canvas.draw()
-            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        else:
-            # Table view: show actual, predicted, and error
-            table_df = pd.DataFrame({
-                'Date': df.index.strftime('%Y-%m-%d'),
-                'Actual': [f'{v:.2f}' for v in actual],
-                'Predicted': [f'{v:.2f}' for v in predicted],
-                'Error': [f'{v:.2f}' for v in np.abs(actual - predicted)]
-            })
-            if table_df.empty:
-                print("DEBUG: Table DataFrame is empty.")
-                error_label = ttk.Label(self.output_frame, text="No data available to display in table.", font=("Arial", 12, "bold"))
-                error_label.pack(pady=10)
-            else:
-                print(f"DEBUG: Table DataFrame shape: {table_df.shape}")
-                # Limit to 100 rows for performance
-                display_df = table_df.head(100)
-                tree = ttk.Treeview(self.output_frame, columns=list(display_df.columns), show='headings', height=20)
-                style = ttk.Style()
-                style.configure("Treeview.Heading", font=("Arial", 11, "bold"))
-                style.configure("Treeview", font=("Arial", 10))
-                for col in display_df.columns:
-                    tree.heading(col, text=col)
-                    tree.column(col, width=120, anchor='center')
-                for _, row in display_df.iterrows():
-                    tree.insert('', 'end', values=list(row))
-                tree.pack(fill=tk.BOTH, expand=True)
-                scrollbar = ttk.Scrollbar(self.output_frame, orient="vertical", command=tree.yview)
-                tree.configure(yscrollcommand=scrollbar.set)
-                scrollbar.pack(side='right', fill='y')
-                # Show RMSE below the table
-                rmse_label = ttk.Label(self.output_frame, text=f"RMSE: {rmse:.2f}", font=("Arial", 12, "bold"))
-                rmse_label.pack(pady=10)
-                messagebox.showinfo("Table Created", f"Table successfully created with {display_df.shape[0]} rows.")
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.plot(df.index[:min_len], actual, label='Actual Price', color='blue')
+        ax.plot(df.index[:min_len], predicted, label='Predicted Price', color='green')
+        # Future forecast
+        if len(future_preds) > 0:
+            last_date = df.index[-1]
+            future_dates = pd.date_range(last_date, periods=8, freq='B')[1:]
+            ax.plot(future_dates, future_preds, label='7-Day Forecast', color='orange', linestyle='dashed', marker='o')
+            # Add vertical line to distinguish future
+            ax.axvline(x=last_date, color='red', linestyle='--', linewidth=2, label='Forecast Start')
+        ax.set_title(f"{ticker} Actual, Predicted & 7-Day Forecast\nRMSE: {rmse:.2f}")
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Price')
+        ax.legend()
+        # RMSE is now only shown in the graph title
+        canvas = FigureCanvasTkAgg(fig, master=self.output_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
 if __name__ == "__main__":
     root = tk.Tk()
