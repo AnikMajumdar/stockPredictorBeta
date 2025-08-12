@@ -1,54 +1,78 @@
 # Stock Predictor UI
 
-This project provides a simple desktop application for viewing and predicting stock prices using Python and Tkinter. Users can enter a stock ticker, select a date range (currently set to Jan 2025 - Jun 2025), and choose to view either a graph or a table of actual and predicted prices, along with RMSE (error).
+This project provides desktop applications for viewing and predicting stock prices using Python and Tkinter. The main application shows actual vs predicted stock prices with a 7-day forecast, while additional utilities are available for stock viewing and advanced LSTM modeling.
 
 ## How to Run
 
-1. **Install dependencies** (in your virtual environment):
+1. **Install dependencies** (if not already installed):
    ```powershell
-   C:/pytorchStocks/.venv/Scripts/python.exe -m pip install yfinance pandas numpy scikit-learn matplotlib
+   C:\stockPredictorBeta\venv\Scripts\pip.exe install yfinance pandas numpy scikit-learn matplotlib torch
    ```
 
-2. **Run the UI application:**
+2. **Run the main Stock Predictor UI:**
    ```powershell
-   C:/pytorchStocks/.venv/Scripts/python.exe c:/pytorchStocks/stock_predictor_ui.py
+   C:\stockPredictorBeta\venv\Scripts\python.exe C:\stockPredictorBeta\stock_predictor_ui.py
    ```
 
 3. **Usage:**
-   - Enter a stock ticker (e.g., `AAPL`, `MSFT`, etc.).
-   - Choose between "Graph" or "Table" view.
-   - Click "Show" to display results for the selected stock and date range.
+   - The application displays a list of top 10 US stocks for reference
+   - Enter a stock ticker (e.g., `AAPL`, `MSFT`, etc.)
+   - Click "Show Graph" to display actual vs predicted prices with 7-day forecast
+   - The graph shows historical data from Jan 2025 - Jun 2025 plus a 7-day forecast
+
+## Available Applications
+
+### 1. Stock Predictor UI (`stock_predictor_ui.py`) - Main Application
+- **Purpose**: Shows actual vs predicted stock prices with 7-day forecast
+- **Features**: 
+  - Top 10 US stocks reference list
+  - Linear regression prediction model
+  - 7-day future price forecast
+  - RMSE error calculation displayed in graph title
+- **Date Range**: Jan 2025 - Jun 2025
+- **Run Command**: `C:\stockPredictorBeta\venv\Scripts\python.exe C:\stockPredictorBeta\stock_predictor_ui.py`
+
+### 2. Stock Viewer (`stock_viewer.py`) - Simple Viewer
+- **Purpose**: Basic stock price viewing without predictions
+- **Features**: Graph or table view of historical stock data
+- **Date Range**: 2020-2023
+- **Run Command**: `C:\stockPredictorBeta\venv\Scripts\python.exe C:\stockPredictorBeta\stock_viewer.py`
+
+### 3. Advanced LSTM Model (`main.py`) - Research/Development
+- **Purpose**: Advanced neural network model using PyTorch LSTM
+- **Features**: 
+  - LSTM neural network for stock prediction
+  - GPU support (CUDA if available)
+  - Train/test split with RMSE evaluation
+  - Detailed error analysis and visualization
+- **Note**: This is a script, not a GUI application
+- **Run Command**: `C:\stockPredictorBeta\venv\Scripts\python.exe C:\stockPredictorBeta\main.py`
 
 ## Model Logic & Analysis
 
-### Model Overview
+### Stock Predictor UI Model
+- **Algorithm**: Linear Regression (`sklearn.linear_model.LinearRegression`)
+- **Input**: Previous day's closing price
+- **Output**: Next day's closing price prediction + 7-day forecast
+- **Evaluation**: RMSE (Root Mean Squared Error)
 
-The current model uses linear regression for demonstration purposes. It uses the following logic:
-- Downloads historical stock data using `yfinance`.
-- Uses previous day's closing price to predict the next day's closing price with a linear regression model (`sklearn.linear_model.LinearRegression`).
-- Calculates RMSE (Root Mean Squared Error) between actual and predicted prices.
+### LSTM Model (main.py)
+- **Algorithm**: Long Short-Term Memory neural network
+- **Framework**: PyTorch with CUDA support
+- **Sequence Length**: 30 days
+- **Architecture**: 2-layer LSTM with 32 hidden units
+- **Training**: 100 epochs with Adam optimizer
 
-### How It Works
-
-1. **Data Download:**
-   - The app fetches daily closing prices for the selected ticker and date range.
-2. **Prediction:**
-   - The model fits a linear regression using previous day's closing price to predict the next day's closing price.
-   - Predicted prices are generated for the selected date range.
-3. **Evaluation:**
-   - RMSE is calculated to measure the average error between actual and predicted prices.
-
-### Accuracy & Limitations
-
-- **Accuracy:**
-   - The current model uses a simple linear regression, which is a basic approach and may not capture complex market dynamics.
-   - RMSE values provide a measure of error, but the model is not tuned for high accuracy.
-- **Limitations:**
-   - Linear regression is limited in its ability to model stock price movements, which are influenced by many factors.
-   - For actual predictions, you should train more advanced models (e.g., LSTM, ARIMA) on historical data and validate their performance.
+### Limitations
+- Linear regression model is basic and may not capture complex market dynamics
+- LSTM model requires significant computational resources and training time
+- Stock prediction is inherently uncertain due to market volatility
+- Models are for educational/demonstration purposes
 
 ## File Structure
 
-- `stock_predictor_ui.py`: Main UI application.
-- `main.py`: Original script for data analysis and plotting.
-- `README.md`: This documentation file.
+- `stock_predictor_ui.py`: Main GUI application with linear regression predictions
+- `stock_viewer.py`: Simple stock data viewer (no predictions)
+- `main.py`: Advanced LSTM model for research/development
+- `README.md`: This documentation file
+- `venv/`: Python virtual environment with dependencies
